@@ -1,9 +1,25 @@
-import javax.swing.*;
-import java.awt.*;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.Font;
+import java.awt.GridLayout;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
+
+import javax.swing.DefaultListModel;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JList;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JPasswordField;
+import javax.swing.JScrollPane;
+import javax.swing.JTextArea;
+import javax.swing.JTextField;
+import javax.swing.SwingConstants;
+import javax.swing.SwingUtilities;
 
 public class Client {
 
@@ -45,6 +61,8 @@ public class Client {
                     String content = inputArea.getText().trim();
                     if (!content.isEmpty()) {
                         out.println(content);
+                        // Display the user's own message in their chat window
+                        updateTextArea(username + ": " + content + "\n");
                         inputArea.setText("");
                         if (content.equals("exit")) {
                             try {
@@ -119,7 +137,7 @@ public class Client {
 
                 try {
                     socket = new Socket("127.0.0.1", 7777);
-            br = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+                    br = new BufferedReader(new InputStreamReader(socket.getInputStream()));
                     out = new PrintWriter(socket.getOutputStream(), true);
 
                     out.println((choice == 0 ? "login" : "signup") + ":" + username + ":" + password);
@@ -137,7 +155,7 @@ public class Client {
             }
         }
 
-            startReading();
+        startReading();
     }
 
     public void startReading() {
@@ -151,12 +169,15 @@ public class Client {
                         socket.close();
                         break;
                     }
-                    updateTextArea(msg + "\n");
+                    // Only display messages from others, as our own messages are already displayed when sent
+                    if (!msg.startsWith(username + ": ")) {
+                        updateTextArea(msg + "\n");
+                    }
                 }
             } catch (Exception e) {
                 System.err.println("Error in reading: " + e.getMessage());
-            e.printStackTrace();
-        }
+                e.printStackTrace();
+            }
         };
         new Thread(r1).start();
     }
