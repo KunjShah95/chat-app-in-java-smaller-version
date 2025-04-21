@@ -1,62 +1,39 @@
-import javax.swing.*;
-import java.awt.*;
-import java.io.BufferedReader;
+import java.io.BufferedReader;     
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.ArrayList;
-import java.util.List;
 
 public class Server {
     ServerSocket server;
-    List<ClientHandler> clients = new ArrayList<>();
-    JTextArea textArea;
-    DefaultListModel<String> userListModel;
+    java.util.List<ClientHandler> clients = new ArrayList<>();
     Map<String, String> userCredentials = new HashMap<>(); // Store username and password
 
     public static void main(String[] args) {
-        SwingUtilities.invokeLater(Server::new);
+        new Server();
     }
 
     public Server() {
-        JFrame frame = new JFrame("Server");
-        textArea = new JTextArea();
-        textArea.setEditable(false);
-        JScrollPane scrollPane = new JScrollPane(textArea);
-
-        userListModel = new DefaultListModel<>();
-        JList<String> userList = new JList<>(userListModel);
-        JScrollPane userScrollPane = new JScrollPane(userList);
-
-        JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, scrollPane, userScrollPane);
-        splitPane.setDividerLocation(300);
-
-        frame.setLayout(new BorderLayout());
-        frame.add(splitPane, BorderLayout.CENTER);
-        frame.setSize(500, 300);
-        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        frame.setVisible(true);
-
         new Thread(this::startServer).start();
     }
 
     public void startServer() {
         try {
             server = new ServerSocket(7777);
-            updateTextArea("Server is ready to accept connections\nWaiting...\n");
+            System.out.println("Server is ready to accept connections\nWaiting...");
 
             while (true) {
                 Socket socket = server.accept(); // establishes connection
-                updateTextArea("A new client has connected\n");
+                System.out.println("A new client has connected");
                 ClientHandler clientHandler = new ClientHandler(socket, this);
                 clients.add(clientHandler);
                 new Thread(clientHandler).start();
             }
         } catch (Exception e) {
-            updateTextArea("Error in server setup: " + e.getMessage() + "\n");
+            System.out.println("Error in server setup: " + e.getMessage());
             e.printStackTrace();
         }
     }
@@ -70,15 +47,15 @@ public class Server {
     }
 
     public void updateTextArea(String message) {
-        SwingUtilities.invokeLater(() -> textArea.append(message));
+        System.out.println(message);
     }
 
     public void addUser(String username) {
-        SwingUtilities.invokeLater(() -> userListModel.addElement(username));
+        System.out.println(username + " has joined the chat.");
     }
 
     public void removeUser(String username) {
-        SwingUtilities.invokeLater(() -> userListModel.removeElement(username));
+        System.out.println(username + " has left the chat.");
     }
 
     public boolean registerUser(String username, String password) {
@@ -132,7 +109,7 @@ class ClientHandler implements Runnable {
                 }
             }
 
-            server.updateTextArea(username + " has joined the chat\n");
+            server.updateTextArea(username + " has joined the chat");
             server.addUser(username);
         } catch (Exception e) {
             e.printStackTrace();
@@ -145,17 +122,17 @@ class ClientHandler implements Runnable {
             String msg;
             while ((msg = br.readLine()) != null) {
                 if (msg.equals("exit")) {
-                    server.updateTextArea(username + " has left the chat\n");
+                    server.updateTextArea(username + " has left the chat");
                     server.removeUser(username);
                     socket.close();
                     break;
                 }
                 String message = username + ": " + msg;
-                server.updateTextArea(message + "\n");
+                server.updateTextArea(message);
                 server.broadcastMessage(message, this);
             }
         } catch (Exception e) {
-            server.updateTextArea("Error in client handler: " + e.getMessage() + "\n");
+            server.updateTextArea("Error in client handler: " + e.getMessage());
             e.printStackTrace();
         }
     }

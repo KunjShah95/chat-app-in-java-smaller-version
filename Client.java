@@ -1,137 +1,37 @@
-import java.awt.BorderLayout;
-import java.awt.Color;
-import java.awt.Dimension;
-import java.awt.Font;
-import java.awt.GridLayout;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
-
-import javax.swing.DefaultListModel;
-import javax.swing.JFrame;
-import javax.swing.JLabel;
-import javax.swing.JList;
-import javax.swing.JOptionPane;
-import javax.swing.JPanel;
-import javax.swing.JPasswordField;
-import javax.swing.JScrollPane;
-import javax.swing.JTextArea;
-import javax.swing.JTextField;
-import javax.swing.SwingConstants;
-import javax.swing.SwingUtilities;
+import java.util.Scanner;
 
 public class Client {
 
     Socket socket;
     BufferedReader br;
     PrintWriter out;
-    JTextArea textArea;
-    JTextField textField;
-    JLabel statusLabel;
-    DefaultListModel<String> userListModel;
     String username;
 
     public static void main(String[] args) {
-        SwingUtilities.invokeLater(Client::new);
+        new Client();
     }
 
     public Client() {
-        JFrame frame = new JFrame("Chat Client");
-        frame.setLayout(new BorderLayout());
-
-        // Text area for chat messages
-        textArea = new JTextArea();
-        textArea.setEditable(false);
-        textArea.setFont(new Font("Arial", Font.PLAIN, 14));
-        textArea.setBackground(new Color(240, 240, 240));
-        JScrollPane chatScrollPane = new JScrollPane(textArea);
-        chatScrollPane.setPreferredSize(new Dimension(450, 300));
-
-        // Text area for input
-        JTextArea inputArea = new JTextArea(3, 20);
-        inputArea.setFont(new Font("Arial", Font.PLAIN, 14));
-        inputArea.setLineWrap(true);
-        inputArea.setWrapStyleWord(true);
-        JScrollPane inputScrollPane = new JScrollPane(inputArea);
-
-        inputArea.addKeyListener(new java.awt.event.KeyAdapter() {
-            public void keyPressed(java.awt.event.KeyEvent evt) {
-                if (evt.getKeyCode() == java.awt.event.KeyEvent.VK_ENTER) {
-                    String content = inputArea.getText().trim();
-                    if (!content.isEmpty()) {
-                        out.println(content);
-                        // Display the user's own message in their chat window
-                        updateTextArea(username + ": " + content + "\n");
-                        inputArea.setText("");
-                        if (content.equals("exit")) {
-                            try {
-                                socket.close();
-                            } catch (Exception ex) {
-                                ex.printStackTrace();
-                            }
-                        }
-                    }
-                    evt.consume();
-                }
-            }
-        });
-
-        // User list
-        userListModel = new DefaultListModel<>();
-        JList<String> userList = new JList<>(userListModel);
-        userList.setFont(new Font("Arial", Font.PLAIN, 14));
-        JScrollPane userScrollPane = new JScrollPane(userList);
-        userScrollPane.setPreferredSize(new Dimension(150, 0));
-
-        // Status label
-        statusLabel = new JLabel("Disconnected");
-        statusLabel.setFont(new Font("Arial", Font.ITALIC, 12));
-        statusLabel.setHorizontalAlignment(SwingConstants.CENTER);
-
-        // Top panel for status and user list
-        JPanel topPanel = new JPanel(new BorderLayout());
-        topPanel.add(statusLabel, BorderLayout.NORTH);
-        topPanel.add(userScrollPane, BorderLayout.CENTER);
-
-        // Bottom panel for input
-        JPanel bottomPanel = new JPanel(new BorderLayout());
-        bottomPanel.add(inputScrollPane, BorderLayout.CENTER);
-
-        // Add components to frame
-        frame.add(topPanel, BorderLayout.EAST);
-        frame.add(chatScrollPane, BorderLayout.CENTER);
-        frame.add(bottomPanel, BorderLayout.SOUTH);
-
-        frame.setSize(700, 500);
-        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        frame.setVisible(true);
-
-        // Login or Signup
-        while (true) {
-            String[] options = {"Login", "Signup"};
-            int choice = JOptionPane.showOptionDialog(frame, "Choose an option", "Login/Signup",
-                    JOptionPane.DEFAULT_OPTION, JOptionPane.INFORMATION_MESSAGE, null, options, options[0]);
-
-            if (choice == -1) {
-                System.exit(0);
-            }
-
-            JPanel panel = new JPanel(new GridLayout(2, 2));
-            JTextField usernameField = new JTextField();
-            JPasswordField passwordField = new JPasswordField();
-            panel.add(new JLabel("Username:"));
-            panel.add(usernameField);
-            panel.add(new JLabel("Password:"));
-            panel.add(passwordField);
-
-            int result = JOptionPane.showConfirmDialog(frame, panel, options[choice], JOptionPane.OK_CANCEL_OPTION);
-            if (result == JOptionPane.OK_OPTION) {
-                username = usernameField.getText();
-                String password = new String(passwordField.getPassword());
+        try {
+            // Login or Signup
+            Scanner scanner = new Scanner(System.in);
+            boolean authenticated = false;
+            
+            while (!authenticated) {
+                System.out.println("Choose an option: (1) Login (2) Signup");
+                String choice = scanner.nextLine();
+                
+                System.out.print("Username: ");
+                username = scanner.nextLine();
+                System.out.print("Password: ");
+                String password = scanner.nextLine();
 
                 if (username.isEmpty() || password.isEmpty()) {
-                    JOptionPane.showMessageDialog(frame, "Username and password cannot be empty.");
+                    System.out.println("Username and password cannot be empty.");
                     continue;
                 }
 
@@ -140,22 +40,33 @@ public class Client {
                     br = new BufferedReader(new InputStreamReader(socket.getInputStream()));
                     out = new PrintWriter(socket.getOutputStream(), true);
 
-                    out.println((choice == 0 ? "login" : "signup") + ":" + username + ":" + password);
+                    // Send login/signup request
+                    String action = choice.equals("1") ? "login" : "signup";
+                    out.println(action + ":" + username + ":" + password);
+                    
                     String response = br.readLine();
+                    System.out.println(response);
+                    
                     if (response.equals("Login successful") || response.equals("Signup successful")) {
-                        statusLabel.setText("Connected as " + username);
-                        break;
+                        authenticated = true;
+                        System.out.println("Connected as " + username);
                     } else {
-                        JOptionPane.showMessageDialog(frame, response);
                         socket.close();
                     }
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
             }
-        }
 
-        startReading();
+            // Start message reading thread
+            startReading();
+            
+            // Start message writing
+            startWriting();
+            
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     public void startReading() {
@@ -164,14 +75,15 @@ public class Client {
             try {
                 while (true) {
                     String msg = br.readLine();
-                    if (msg.equals("exit")) {
+                    if (msg == null || msg.equals("exit")) {
                         System.out.println("Server terminated the chat");
                         socket.close();
                         break;
                     }
-                    // Only display messages from others, as our own messages are already displayed when sent
+                    
+                    // Display messages from others
                     if (!msg.startsWith(username + ": ")) {
-                        updateTextArea(msg + "\n");
+                        System.out.println(msg);
                     }
                 }
             } catch (Exception e) {
@@ -181,8 +93,29 @@ public class Client {
         };
         new Thread(r1).start();
     }
-
-    public void updateTextArea(String message) {
-        SwingUtilities.invokeLater(() -> textArea.append(message));
+    
+    public void startWriting() {
+        Runnable r2 = () -> {
+            System.out.println("Writer started...");
+            try {
+                Scanner sc = new Scanner(System.in);
+                while (!socket.isClosed()) {
+                    String content = sc.nextLine();
+                    if (!content.isEmpty()) {
+                        out.println(content);
+                        
+                        // If user types 'exit', close the connection
+                        if (content.equals("exit")) {
+                            socket.close();
+                            break;
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                System.err.println("Error in writing: " + e.getMessage());
+                e.printStackTrace();
+            }
+        };
+        new Thread(r2).start();
     }
 }
